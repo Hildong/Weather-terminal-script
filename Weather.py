@@ -97,8 +97,7 @@ def previousDateAverage(lat, long):
             if highestTemp < response["hourly"]["temperature_2m"][i]:
                 highestTemp = response["hourly"]["temperature_2m"][i]
                 highestTempDate = response["hourly"]["time"][i]
-
-            if lowestTemp > response["hourly"]["temperature_2m"][i] or i == 1:
+            elif lowestTemp > response["hourly"]["temperature_2m"][i] or i == 1:
                 lowestTemp = response["hourly"]["temperature_2m"][i]
                 lowestTempDate = response["hourly"]["time"][i]
 
