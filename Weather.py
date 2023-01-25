@@ -1,7 +1,6 @@
 import requests
 from geopy.geocoders import Nominatim 
 from datetime import datetime
-print(datetime.date(datetime.now())) ##For Date
 exitProgram = False
 
 # Get longitude and latitude of requested city
@@ -12,39 +11,116 @@ def getLongAndLat():
 
     return geolocator.geocode(city)
 
-# Get todays forcast
-def todaysForcast():
-    url = "https://archive-api.open-meteo.com/v1/archive?latitude=" + str(getLongAndLat().latitude) + "&longitude=" + str(getLongAndLat().longitude) + "&start_date=" + datetime.date(datetime.now()) + "&" + datetime.date(datetime.now()) + "&hourly=temperature_2m"
-    response = requests.request("GET", url)
+def printResultSpaces(space):
+    print("\n" * space)
+    print("----- ")
+    print("\n" * space)
 
-    print(response.text)
+# Get todays forcast
+def todaysForcast(lat, long):
+
+    url = "https://api.open-meteo.com/v1/forecast?latitude=" + str(lat) + "&longitude=" + str(long) + "&hourly=temperature_2m"
+    response = requests.request("GET", url).json()
+
+    printResultSpaces(3)
+
+    for i in range(24):
+        print(response["hourly"]["time"][i] + ": " + str(response["hourly"]["temperature_2m"][i]))
+    
+    printResultSpaces(3)
+
 
 # Get forcast for x amount of days forward
-def futureForcast():
-    url = "https://archive-api.open-meteo.com/v1/archive?latitude=" + str(getLongAndLat().latitude) + "&longitude=" + str(getLongAndLat().longitude) + "&start_date=2023-01-08&end_date=2023-01-15&hourly=temperature_2m"
+def futureForcast(lat, long):
 
+    url = "https://api.open-meteo.com/v1/forecast?latitude=" + str(lat) + "&longitude=" + str(long) + "&hourly=temperature_2m"
+    response = requests.request("GET", url).json()
 
-    response = requests.request("GET", url)
+    printResultSpaces(3)
 
-    print(response.text)
+    for i in range(len(response["hourly"]["time"])):
+        print("\n") if i % 24 == 0 else None
+        print(response["hourly"]["time"][i] + ": " + str(response["hourly"]["temperature_2m"][i]))
+    
+    printResultSpaces(3)
 
 # Get average temperature of todays date x years back
-def todaysAverage():
-    url = "https://archive-api.open-meteo.com/v1/archive?latitude=" + str(getLongAndLat().latitude) + "&longitude=" + str(getLongAndLat().longitude) + "&start_date=2013-03-14&end_date=2013-03-22&hourly=temperature_2m"
+def todaysAverage(lat, long):
+    url = "https://api.open-meteo.com/v1/forecast?latitude=" + str(lat) + "&longitude=" + str(long) + "&hourly=temperature_2m"
 
+    response = requests.request("GET", url).json()
 
-    response = requests.request("GET", url)
+    printResultSpaces(1)
 
-    print(response.text)
+    minTemp=maxTemp=minTempPos=maxTempPos = 0
+
+    for i in range(len(response["hourly"]["time"])):
+        if minTemp > response["hourly"]["temperature_2m"][i]:
+            minTemp = response["hourly"]["temperature_2m"][i]
+            minTempPos = i
+
+        if maxTemp < response["hourly"]["temperature_2m"][i]:
+            maxTemp = response["hourly"]["temperature_2m"][i]
+            maxTempPos = i
+
+    print("Min temperature today: \n" + response["hourly"]["time"][minTempPos] + ": " + str(minTemp))
+    print("Max temperature today: \n" + response["hourly"]["time"][maxTempPos] + ": " + str(maxTemp))
+
+    
+    printResultSpaces(1)
 
 # Get average temperature between two dates x years between
-def previousDateAverage():
-    url = "https://archive-api.open-meteo.com/v1/archive?latitude=" + str(getLongAndLat().latitude) + "&longitude=" + str(getLongAndLat().longitude) + "&start_date=2013-03-14&end_date=2013-03-22&hourly=temperature_2m"
+def previousDateAverage(lat, long):
+
+    whatDate = input("What date do you want to check for? (format MM-DD) ")
+    yearsBack = input("How many years back do you want to check the date for? ")
+
+    url = "https://archive-api.open-meteo.com/v1/archive?latitude=" + str(lat) + "&longitude=" + str(long) + "&start_date=" + str(datetime.today().year - int(yearsBack)) + "-" + whatDate + "&end_date=" + str(datetime.today().year -1) + "-" + whatDate + "&hourly=temperature_2m"
+    response = requests.request("GET", url).json()
+
+    printResultSpaces(1)
+
+    lowestTempAverage = 0.0
+    highestTempAverage = 0.0
+    lowestTemp = 0.0
+    highestTemp = 0.0
+    lowestTempDate = " "
+    highestTempDate = " "
+    temperatures = []
+    hoursPerYearLooped = 0
+
+    for i in range(len(response["hourly"]["time"])):
+        #if response["hourly"]["time"][i]
+        if response["hourly"]["time"][i][5:10] == whatDate:
+            #print(min(response["hourly"]["temperature_2m"][i]))
+            hoursPerYearLooped += 1
+            if highestTemp < response["hourly"]["temperature_2m"][i]:
+                highestTemp = response["hourly"]["temperature_2m"][i]
+                highestTempDate = response["hourly"]["time"][i]
+
+            if lowestTemp > response["hourly"]["temperature_2m"][i] or i == 1:
+                lowestTemp = response["hourly"]["temperature_2m"][i]
+                lowestTempDate = response["hourly"]["time"][i]
+
+            if hoursPerYearLooped < 24:
+                temperatures.append(response["hourly"]["temperature_2m"][i])
+            else:
+                lowestTempAverage += min(temperatures)
+                highestTempAverage += max(temperatures)
+                temperatures = []
+                temperatures.append(response["hourly"]["temperature_2m"][i])
+                hoursPerYearLooped = 1
+
+    
+
+    print("Lowest average temperature over the past " + yearsBack + " years on " + whatDate + ": " + str(lowestTempAverage/int(yearsBack)))
+    print("Lowest temperature over the past " + yearsBack + " years on " + lowestTempDate + ": " + str(lowestTemp))
+    print("Highest average temperature over the past " + yearsBack + " years on " + whatDate + ": " + str(highestTempAverage/int(yearsBack)))
+    print("Highest temperature over the past " + yearsBack + " years on " + highestTempDate + ": " + str(highestTemp))
 
 
-    response = requests.request("GET", url)
-
-    print(response.text)
+    
+    printResultSpaces(1)
 
 
 while not exitProgram:
@@ -52,13 +128,24 @@ while not exitProgram:
     print("Welcome to the weather checker. What do you want to check? ")
     print("1. Check todays temperature forcast")
     print("2. Check weather temperature for x days forward")
-    print("3. Check todays temperature weather x years ago")
-    print("4. Check average temperature from date x to date y")
+    print("3. Check lowest and highest temperature weather x years ago")
+    print("4. Check lowest and highest temperature from date x to date y")
+    print("5. Exit")
     choice = input("Option: ")
 
-    timesToLoop = input("How many years back do you want to check the weather? ")
-
-    while int(timesToLoop) > 10:
-        timesToLoop = input("Can only check 10 years back. How many years back do you want to check? ")
-
-    futureForcast()
+    if choice == "1":
+        location = getLongAndLat()
+        todaysForcast(location.latitude, location.longitude)
+    elif choice == "2":
+        location = getLongAndLat()
+        futureForcast(location.latitude, location.longitude)
+    elif choice == "3":
+        location = getLongAndLat()
+        todaysAverage(location.latitude, location.longitude)
+    elif choice == "4":
+        location = getLongAndLat()
+        previousDateAverage(location.latitude, location.longitude)
+    elif choice == "5":
+        exitProgram = True
+    else:
+        print("Not a valid option")
